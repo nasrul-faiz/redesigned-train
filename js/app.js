@@ -8,7 +8,13 @@ import 'lightgallery.js/dist/js/lightgallery.js';
 import 'lg-thumbnail.js/dist/lg-thumbnail.js';
 import 'lg-zoom.js/dist/lg-zoom.js';
 import { marked } from 'marked';
-import { DEFAULT_BOOK_TITLE, normalizeBookTitle, normalizeDocumentState } from '../src/data-store.js';
+import {
+  DEFAULT_BOOK_TITLE,
+  DEFAULT_TABLE_SETTINGS,
+  normalizeBookTitle,
+  normalizeDocumentState,
+  normalizeTableSettings
+} from '../src/data-store.js';
 import {
   buildChartArcPath,
   getChartFractions,
@@ -39,8 +45,10 @@ const translations = {
     nativeShare: 'Kongsi melalui peranti',
     general: 'Umum',
     appearance: 'Penampilan',
+    tableSettings: 'Jadual',
     generalDescription: 'Urus identiti dan bahasa RecipeBook anda.',
     appearanceDescription: 'Sesuaikan rupa dan cara anda menggunakan RecipeBook.',
+    tableSettingsDescription: 'Tetapkan warna tajuk dan alignment teks untuk semua jadual.',
     languageDescription: 'Pilih bahasa yang digunakan dalam antara muka.',
     bookTitleDescription: 'Nama ini dipaparkan pada penjuru kiri atas.',
     editModeDescription: 'Tunjukkan kawalan untuk menyunting kandungan dan menu.',
@@ -48,6 +56,12 @@ const translations = {
     language: 'Bahasa',
     bookTitle: 'Nama RecipeBook',
     theme: 'Tema',
+    tableHeaderColor: 'Warna tajuk jadual',
+    tableHeaderColorDescription: 'Warna baris tajuk untuk semua jadual.',
+    tableTextAlign: 'Alignment teks',
+    alignLeft: 'Kiri',
+    alignCenter: 'Tengah',
+    alignRight: 'Kanan',
     editMode: 'Mod edit',
     light: 'Terang',
     dark: 'Gelap',
@@ -199,8 +213,10 @@ const translations = {
     nativeShare: 'Share from device',
     general: 'General',
     appearance: 'Appearance',
+    tableSettings: 'Table',
     generalDescription: 'Manage your RecipeBook identity and language.',
     appearanceDescription: 'Customize how your RecipeBook looks and feels.',
+    tableSettingsDescription: 'Set the header color and text alignment for all tables.',
     languageDescription: 'Choose the language used across the interface.',
     bookTitleDescription: 'This name appears in the top-left corner.',
     editModeDescription: 'Show controls for editing content and navigation.',
@@ -208,6 +224,12 @@ const translations = {
     language: 'Language',
     bookTitle: 'RecipeBook name',
     theme: 'Theme',
+    tableHeaderColor: 'Table header color',
+    tableHeaderColorDescription: 'Color used for the header row in all tables.',
+    tableTextAlign: 'Text alignment',
+    alignLeft: 'Left',
+    alignCenter: 'Center',
+    alignRight: 'Right',
     editMode: 'Edit mode',
     light: 'Light',
     dark: 'Dark',
@@ -353,7 +375,8 @@ const translations = {
 let state = {
   activeId: null,
   pages: [], // tree: { id, title, content, children: [] }
-  bookTitle: DEFAULT_BOOK_TITLE
+  bookTitle: DEFAULT_BOOK_TITLE,
+  tableSettings: { ...DEFAULT_TABLE_SETTINGS }
 };
 
 /* ---------- Default seed content ---------- */
@@ -436,6 +459,7 @@ async function loadState() {
     state.pages = normalized.pages;
     state.activeId = normalized.activeId;
     state.bookTitle = normalized.bookTitle;
+    state.tableSettings = normalized.tableSettings;
     const sharedPageId = getSharedPageId();
     if (sharedPageId && findNode(sharedPageId, state.pages)) state.activeId = sharedPageId;
   };
@@ -481,7 +505,8 @@ function saveState() {
   const payload = {
     pages: state.pages,
     activeId: state.activeId,
-    bookTitle: normalizeBookTitle(state.bookTitle)
+    bookTitle: normalizeBookTitle(state.bookTitle),
+    tableSettings: normalizeTableSettings(state.tableSettings)
   };
   const serialized = JSON.stringify(payload);
   localStorage.setItem(STORAGE_KEY, serialized);
@@ -1577,6 +1602,21 @@ function insertTextAtSelection(textarea, value) {
   textarea.setRangeText(value, start, end, 'end');
   textarea.dispatchEvent(new Event('input', { bubbles: true }));
   textarea.focus();
+}
+
+function getEditorSelectionRange(textarea) {
+  const selection = window.getSelection();
+  if (!selection?.rangeCount) return null;
+  const range = selection.getRangeAt(0);
+  return textarea.contains(range.commonAncestorContainer) ? range.cloneRange() : null;
+}
+
+function restoreEditorSelection(textarea, range) {
+  if (!range) return;
+  textarea.focus();
+  const selection = window.getSelection();
+  selection?.removeAllRanges();
+  selection?.addRange(range);
 }
 
 function insertHtmlAtSelection(textarea, html) {
@@ -2748,6 +2788,7 @@ function renderEditor(node) {
   const characterCount = document.getElementById('editorCharacterCount');
   const saveButton = document.getElementById('btnSaveEdit');
   const initialContent = textarea.innerHTML;
+  let toolbarSelection = null;
   const updateEditorMeta = () => {
     const hasChanges = textarea.innerHTML !== initialContent;
     characterCount.textContent = `${textarea.textContent.length.toLocaleString()} ${getText('characters')}`;
@@ -2791,9 +2832,12 @@ function renderEditor(node) {
   document.getElementById('btnInsertMap').addEventListener('click', () => openMapBuilderModal(textarea));
   contentEl.querySelectorAll('.tb-btn').forEach(button => {
     if (!button.dataset.command && !button.dataset.callout) return;
-    button.addEventListener('mousedown', (event) => event.preventDefault());
+    button.addEventListener('mousedown', (event) => {
+      toolbarSelection = getEditorSelectionRange(textarea);
+      event.preventDefault();
+    });
     button.addEventListener('click', () => {
-      textarea.focus();
+      restoreEditorSelection(textarea, toolbarSelection);
 
       if (button.dataset.callout) {
         const variant = button.dataset.callout;
@@ -2814,7 +2858,10 @@ function renderEditor(node) {
       } else if (button.dataset.command === 'deleteTable') {
         deleteSelectedTable(textarea);
       } else {
-        document.execCommand(button.dataset.command, false, button.dataset.value || null);
+        const commandValue = button.dataset.command === 'formatBlock'
+          ? `<${button.dataset.value}>`
+          : button.dataset.value || null;
+        document.execCommand(button.dataset.command, false, commandValue);
       }
       updateEditorMeta();
     });
@@ -2972,6 +3019,11 @@ function syncSettingsPanel() {
   panel.querySelectorAll('[name="themeChoice"]').forEach((radio) => {
     radio.checked = radio.value === theme;
   });
+
+  const tableColorInput = panel.querySelector('#tableHeaderColorInput');
+  if (tableColorInput) tableColorInput.value = state.tableSettings.headerColor;
+  const tableAlignInput = panel.querySelector(`[name="tableTextAlign"][value="${state.tableSettings.textAlign}"]`);
+  if (tableAlignInput) tableAlignInput.checked = true;
 }
 
 function openSettingsPanel() {
@@ -2995,6 +3047,10 @@ function openSettingsPanel() {
           <button type="button" class="settings-nav-item" data-settings-tab="appearance" aria-selected="false" aria-controls="settings-appearance">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 100 18h1.2a2.3 2.3 0 000-4.6h-.9a2.3 2.3 0 01-2.3-2.3c0-1.27 1.03-2.3 2.3-2.3H15a6 6 0 006-6A9 9 0 0012 3zM7.5 10.2a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm4.5-3a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm4.3 3a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6z"/></svg>
             <span>${getText('appearance')}</span>
+          </button>
+          <button type="button" class="settings-nav-item" data-settings-tab="table" aria-selected="false" aria-controls="settings-table">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M10 5v14M16 5v14"/></svg>
+            <span>${getText('tableSettings')}</span>
           </button>
         </nav>
       </aside>
@@ -3054,6 +3110,27 @@ function openSettingsPanel() {
               </label>
             </div>
           </section>
+
+          <section class="settings-pane" id="settings-table" data-settings-pane="table" role="tabpanel" hidden>
+            <div class="settings-section">
+              <div class="settings-field-copy">
+                <label for="tableHeaderColorInput">${getText('tableHeaderColor')}</label>
+                <p>${getText('tableHeaderColorDescription')}</p>
+              </div>
+              <input id="tableHeaderColorInput" class="settings-color-input" type="color" value="${escapeAttribute(state.tableSettings.headerColor)}">
+            </div>
+
+            <div class="settings-section">
+              <div class="settings-field-copy">
+                <label>${getText('tableTextAlign')}</label>
+              </div>
+              <div class="segmented">
+                <label><input type="radio" name="tableTextAlign" value="left" ${state.tableSettings.textAlign === 'left' ? 'checked' : ''}><span>${getText('alignLeft')}</span></label>
+                <label><input type="radio" name="tableTextAlign" value="center" ${state.tableSettings.textAlign === 'center' ? 'checked' : ''}><span>${getText('alignCenter')}</span></label>
+                <label><input type="radio" name="tableTextAlign" value="right" ${state.tableSettings.textAlign === 'right' ? 'checked' : ''}><span>${getText('alignRight')}</span></label>
+              </div>
+            </div>
+          </section>
         </div>
       </div>
     </div>
@@ -3070,7 +3147,8 @@ function openSettingsPanel() {
 
   const settingsTabDescriptionKeys = {
     general: 'generalDescription',
-    appearance: 'appearanceDescription'
+    appearance: 'appearanceDescription',
+    table: 'tableSettingsDescription'
   };
   backdrop.querySelectorAll('[data-settings-tab]').forEach((tab) => {
     tab.addEventListener('click', () => {
@@ -3109,6 +3187,26 @@ function openSettingsPanel() {
     event.target.value = nextTitle;
     updateBrandName();
     saveState();
+  });
+
+  backdrop.querySelector('#tableHeaderColorInput').addEventListener('input', (event) => {
+    state.tableSettings = normalizeTableSettings({
+      ...state.tableSettings,
+      headerColor: event.target.value
+    });
+    applyTableSettings();
+    saveState();
+  });
+
+  backdrop.querySelectorAll('[name="tableTextAlign"]').forEach((radio) => {
+    radio.addEventListener('change', () => {
+      state.tableSettings = normalizeTableSettings({
+        ...state.tableSettings,
+        textAlign: radio.value
+      });
+      applyTableSettings();
+      saveState();
+    });
   });
 
   backdrop.querySelectorAll('[name="themeChoice"]').forEach((radio) => {
@@ -3284,6 +3382,13 @@ function applyTheme(theme) {
   if (moon) moon.style.display = theme === 'dark' ? 'block' : 'none';
   localStorage.setItem(THEME_KEY, theme);
   syncSettingsPanel();
+}
+
+function applyTableSettings() {
+  const settings = normalizeTableSettings(state.tableSettings);
+  state.tableSettings = settings;
+  document.documentElement.style.setProperty('--table-header-bg', settings.headerColor);
+  document.documentElement.style.setProperty('--table-text-align', settings.textAlign);
 }
 
 /* ---------- Sidebar toggle (mobile) ---------- */
@@ -3488,6 +3593,7 @@ function arrangeContentLayout() {
 async function init() {
   arrangeContentLayout();
   await loadState();
+  applyTableSettings();
   updateBrandName();
   applyLanguage(getLanguage());
   initTheme();

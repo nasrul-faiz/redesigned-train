@@ -542,6 +542,17 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   box-shadow: 0 0 0 3px var(--accent-soft);
 }
 
+.settings-color-input {
+  width: 52px;
+  height: 38px;
+  flex-shrink: 0;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  cursor: pointer;
+}
+
 .segmented {
   display: inline-flex;
   background: var(--bg-soft);
@@ -1402,12 +1413,12 @@ html.dark .callout-danger .callout-header { background: rgba(220, 38, 38, 0.2); 
   border-right: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   padding: 10px 12px;
-  text-align: left;
+  text-align: var(--table-text-align, left);
   vertical-align: top;
   white-space: nowrap;
 }
 .markdown-body th, .editor-rich-text th {
-  background: #0f766e;
+  background: var(--table-header-bg, #0f766e);
   color: #ffffff;
   font-weight: 750;
 }
@@ -1535,7 +1546,7 @@ html.dark .editor-rich-text tr:hover td { background: rgba(91, 141, 239, .16); }
 .doc-map {
   position: relative;
   width: min(100%, 720px);
-  margin: 22px 0;
+  margin: 22px auto;
   overflow: hidden;
   border: 1px solid var(--border);
   border-radius: 10px;
@@ -1587,6 +1598,21 @@ html.dark .editor-rich-text tr:hover td { background: rgba(91, 141, 239, .16); }
   height: 300px;
   border: 0;
   background: var(--bg-soft);
+}
+.doc-map-marker {
+  position: absolute;
+  top: calc(50% + 18px);
+  left: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  color: #e5484d;
+  font-size: 27px;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  filter: drop-shadow(0 2px 2px rgba(15, 23, 42, .35));
 }
 
 .editor-wrap {

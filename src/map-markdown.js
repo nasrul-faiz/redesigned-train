@@ -81,5 +81,6 @@ export function buildMapMarkup({ latitude, longitude, link = '', label = 'Locati
   const mapFrame = Number.isFinite(location.latitude) && Number.isFinite(location.longitude)
     ? `<iframe title="${escapeHtml(label || 'Location')}" src="${escapeHtml(buildMapEmbedUrl(location.latitude, location.longitude))}" loading="lazy"></iframe>`
     : '';
-  return `<div class="doc-map" data-map-lat="${location.latitude ?? ''}" data-map-lon="${location.longitude ?? ''}" data-map-link="${escapeHtml(openUrl)}"><div class="doc-map-heading"><strong>${escapeHtml(label || 'Location')}</strong><a href="${escapeHtml(openUrl)}" target="_blank" rel="noopener noreferrer">Open map</a></div>${mapFrame}</div>`;
+  const marker = mapFrame ? '<span class="doc-map-marker" aria-hidden="true"><i class="fa-solid fa-location-dot"></i></span>' : '';
+  return `<div class="doc-map" data-map-lat="${location.latitude ?? ''}" data-map-lon="${location.longitude ?? ''}" data-map-link="${escapeHtml(openUrl)}"><div class="doc-map-heading"><strong>${escapeHtml(label || 'Location')}</strong><a href="${escapeHtml(openUrl)}" target="_blank" rel="noopener noreferrer">Open map</a></div>${mapFrame}${marker}</div>`;
 }

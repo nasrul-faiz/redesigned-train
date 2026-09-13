@@ -1,4 +1,23 @@
 export const DEFAULT_BOOK_TITLE = 'RecipeBook';
+export const DEFAULT_TABLE_SETTINGS = {
+  headerColor: '#0f766e',
+  textAlign: 'left'
+};
+
+const TABLE_ALIGNMENTS = new Set(['left', 'center', 'right']);
+
+export function normalizeTableSettings(value) {
+  const source = value && typeof value === 'object' ? value : {};
+  const headerColor = typeof source.headerColor === 'string'
+    && /^#[0-9a-f]{6}$/i.test(source.headerColor)
+    ? source.headerColor.toLowerCase()
+    : DEFAULT_TABLE_SETTINGS.headerColor;
+  const textAlign = TABLE_ALIGNMENTS.has(source.textAlign)
+    ? source.textAlign
+    : DEFAULT_TABLE_SETTINGS.textAlign;
+
+  return { headerColor, textAlign };
+}
 
 export function normalizeBookTitle(value) {
   const trimmed = typeof value === 'string' ? value.trim() : '';
@@ -134,11 +153,13 @@ export function normalizeDocumentState(raw = {}) {
     ? raw.activeId
     : pages[0]?.id || null;
   const bookTitle = normalizeBookTitle(raw.bookTitle);
+  const tableSettings = normalizeTableSettings(raw.tableSettings);
 
   return {
     pages,
     activeId,
-    bookTitle
+    bookTitle,
+    tableSettings
   };
 }
 

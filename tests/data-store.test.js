@@ -1,9 +1,26 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { normalizeDocumentState, normalizeBookTitle, hasUnsavedChanges } from '../src/data-store.js';
+import {
+  DEFAULT_TABLE_SETTINGS,
+  normalizeDocumentState,
+  normalizeBookTitle,
+  normalizeTableSettings,
+  hasUnsavedChanges
+} from '../src/data-store.js';
 import { clampSidebarWidth } from '../src/sidebar-resize.js';
 import { isSpaRoute } from '../server.js';
+
+test('normalizeTableSettings keeps valid table appearance settings', () => {
+  assert.deepEqual(normalizeTableSettings({ headerColor: '#ABC123', textAlign: 'center' }), {
+    headerColor: '#abc123',
+    textAlign: 'center'
+  });
+});
+
+test('normalizeTableSettings falls back safely for invalid values', () => {
+  assert.deepEqual(normalizeTableSettings({ headerColor: 'red', textAlign: 'justify' }), DEFAULT_TABLE_SETTINGS);
+});
 
 test('normalizeDocumentState returns valid page tree and active id', () => {
   const normalized = normalizeDocumentState({ pages: null, activeId: null });

@@ -27,6 +27,7 @@ test('buildMapMarkup creates an OpenStreetMap embed and preserves the source lin
   assert.match(markup, /openstreetmap\.org\/export\/embed\.html/);
   assert.match(markup, /Office/);
   assert.match(markup, /maps\.google\.com/);
+  assert.match(markup, /class="doc-map-marker"/);
   assert.match(buildMapEmbedUrl(3.139, 101.6869), /marker=3\.139(?:%2C|,)101\.6869/);
 });
 
@@ -35,4 +36,5 @@ test('buildMapMarkup keeps a location link when it has no extractable coordinate
   assert.match(markup, /Pickup point/);
   assert.match(markup, /maps\.app\.goo\.gl/);
   assert.doesNotMatch(markup, /<iframe/);
+  assert.doesNotMatch(markup, /doc-map-marker/);
 });
