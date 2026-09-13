@@ -1195,6 +1195,114 @@ body { background: var(--bg); }
   .pn-link, .pn-link.next { max-width: none; flex-basis: auto; margin-left: 0; text-align: left; }
 }
 
+/* ===== GitBook-style sticky navigation ===== */
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 70;
+  height: 64px;
+  min-height: 64px;
+  padding: 0 22px;
+  border-bottom: 1px solid var(--border);
+  box-shadow: 0 1px 0 rgba(15, 23, 42, .02);
+}
+
+.topbar-left {
+  gap: 6px;
+}
+
+#sidebarToggle {
+  width: 32px;
+  height: 32px;
+  margin-right: 4px;
+  border-radius: 6px;
+}
+
+.topbar-breadcrumb {
+  min-height: 28px;
+  padding-left: 14px;
+  margin-left: 2px;
+  border-left: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.topbar-breadcrumb .crumb-link {
+  padding: 4px 6px;
+  border-radius: 5px;
+  font-weight: 500;
+}
+
+.topbar-breadcrumb .crumb-sep {
+  color: var(--border-strong);
+  opacity: 1;
+  font-size: 13px;
+}
+
+.topbar-right {
+  gap: 3px;
+  padding-left: 9px;
+  border-left: 1px solid var(--border);
+}
+
+.icon-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  color: var(--text-muted);
+  transition: color .15s ease, background .15s ease, border-color .15s ease;
+}
+
+.icon-btn:hover,
+.icon-btn:focus-visible {
+  color: var(--text);
+  background: var(--bg-soft);
+  border-color: var(--border);
+}
+
+.icon-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.nav-icon {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+#settingsButton .nav-icon {
+  stroke-width: 1.45;
+}
+
+@media (min-width: 801px) {
+  .topbar {
+    height: 64px;
+    min-height: 64px;
+  }
+
+  .layout {
+    height: calc(100dvh - 64px);
+  }
+}
+
+@media (max-width: 800px) {
+  .topbar {
+    height: 58px;
+    min-height: 58px;
+    padding: 0 10px;
+  }
+
+  .topbar-right {
+    padding-left: 5px;
+  }
+}
+
 /* ===== Page footer / Prev-Next navigation ===== */
 .page-footer {
   margin-top: 48px;
