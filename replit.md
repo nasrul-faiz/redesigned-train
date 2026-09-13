@@ -17,4 +17,4 @@ npm test
 npm run build
 ```
 
-The app uses the `DATABASE_URL` environment variable for PostgreSQL persistence. It also keeps a browser `localStorage` fallback when the API is unavailable.
+The app uses the `DATABASE_URL` environment variable for Neon PostgreSQL persistence. It also keeps a browser `localStorage` fallback when the API is unavailable.
