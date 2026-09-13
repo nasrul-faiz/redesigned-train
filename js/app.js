@@ -117,6 +117,8 @@ const translations = {
     mapNeedLocation: 'Sila isi latitude dan longitude, atau link lokasi yang mengandungi koordinat.',
     locationUnavailable: 'Lokasi semasa tidak tersedia. Sila semak izin browser.',
     returnToLocation: 'Kembali ke lokasi asal',
+    copyCoordinates: 'Salin koordinat',
+    coordinatesCopied: 'Koordinat disalin',
     confirmDeleteMap: 'Padam map ini daripada kandungan?',
     chartBuilderHint: 'Masukkan data anda sendiri dan pilih bentuk chart yang sesuai.',
     chartTitle: 'Tajuk chart',
@@ -192,9 +194,7 @@ const translations = {
     upload: 'Muat naik',
     uploadTab: 'Upload',
     imageListTab: 'Senarai image',
-    uploadPasswordTitle: 'Buka akses upload',
-    uploadPasswordPlaceholder: 'Password upload',
-    uploadCancelled: 'Upload dibatalkan.',
+    moreImages: '+{count} imej lagi',
     preview: 'Preview',
     backToEditor: 'Kembali ke editor',
     seeMore: 'Lihat lagi',
@@ -285,6 +285,8 @@ const translations = {
     mapNeedLocation: 'Enter latitude and longitude, or a location link containing coordinates.',
     locationUnavailable: 'Current location is unavailable. Check the browser permission.',
     returnToLocation: 'Return to original location',
+    copyCoordinates: 'Copy coordinates',
+    coordinatesCopied: 'Coordinates copied',
     confirmDeleteMap: 'Delete this map from the content?',
     chartBuilderHint: 'Enter your own data and choose the chart style that fits.',
     chartTitle: 'Chart title',
@@ -360,9 +362,7 @@ const translations = {
     upload: 'Upload',
     uploadTab: 'Upload',
     imageListTab: 'Image list',
-    uploadPasswordTitle: 'Unlock image uploads',
-    uploadPasswordPlaceholder: 'Upload password',
-    uploadCancelled: 'Upload cancelled.',
+    moreImages: '+{count} more images',
     preview: 'Preview',
     backToEditor: 'Back to editor',
     seeMore: 'See more',
@@ -1139,6 +1139,32 @@ function initDocumentMaps(root) {
       iframe.src = `${resetUrl}&reset=${Date.now()}`;
     });
     map.append(button);
+
+    const copyButton = document.createElement('button');
+    copyButton.type = 'button';
+    copyButton.className = 'doc-map-copy';
+    copyButton.title = getText('copyCoordinates');
+    copyButton.setAttribute('aria-label', getText('copyCoordinates'));
+    copyButton.innerHTML = '<i class="fa-solid fa-copy" aria-hidden="true"></i>';
+    copyButton.addEventListener('click', async () => {
+      const coordinates = `${latitude}, ${longitude}`;
+      try {
+        await navigator.clipboard.writeText(coordinates);
+        copyButton.classList.add('is-copied');
+        copyButton.title = getText('coordinatesCopied');
+        copyButton.setAttribute('aria-label', getText('coordinatesCopied'));
+        copyButton.innerHTML = '<i class="fa-solid fa-check" aria-hidden="true"></i>';
+        setTimeout(() => {
+          copyButton.classList.remove('is-copied');
+          copyButton.title = getText('copyCoordinates');
+          copyButton.setAttribute('aria-label', getText('copyCoordinates'));
+          copyButton.innerHTML = '<i class="fa-solid fa-copy" aria-hidden="true"></i>';
+        }, 1400);
+      } catch (error) {
+        console.warn('Unable to copy map coordinates', error);
+      }
+    });
+    map.append(copyButton);
   });
 }
   pageBody.querySelectorAll('.file-attachment-share').forEach((button) => {
@@ -1297,14 +1323,18 @@ function removeEphemeralMediaSources(text) {
 function buildMediaGalleryMarkup(items) {
   const hiddenCount = Math.max(0, items.length - 3);
   const columnCount = Math.min(items.length, 3);
+  const lastVisibleIndex = columnCount - 1;
+  const moreImagesLabel = hiddenCount
+    ? getText('moreImages').replace('{count}', String(hiddenCount))
+    : '';
 
   const galleryHtml = `
     <div class="media-gallery media-gallery-${columnCount}" data-gallery-limit="3">
       ${items.map((item, index) => {
         const src = escapeAttribute(item.src);
         const label = escapeAttribute(item.caption || item.title || 'Media');
-        const moreOverlay = index === 2 && hiddenCount
-          ? `<span class="media-more-overlay">+${hiddenCount} more</span>`
+        const moreOverlay = index === lastVisibleIndex && hiddenCount
+          ? `<span class="media-more-overlay">${moreImagesLabel}</span>`
           : '';
 
         if (item.type === 'video') {
@@ -1407,6 +1437,12 @@ function initMediaGallery(pageBody) {
   if (!galleryFn || !galleries.length) return;
 
   galleries.forEach((gallery) => {
+    const overflowOverlay = gallery.querySelector('.media-more-overlay');
+    if (overflowOverlay && !overflowOverlay.closest('.media-item')) {
+      const visibleItems = [...gallery.querySelectorAll('.media-item')]
+        .filter((item) => getComputedStyle(item).display !== 'none');
+      visibleItems.at(-1)?.appendChild(overflowOverlay);
+    }
     if (gallery.dataset.lgInitialized === 'true') return;
     gallery.dataset.lgInitialized = 'true';
     try {
@@ -1500,65 +1536,6 @@ function readFileAsDataUrl(file) {
   });
 }
 
-function requestUploadPassword() {
-  return new Promise((resolve) => {
-    const backdrop = document.createElement('div');
-    backdrop.className = 'modal-backdrop';
-    backdrop.innerHTML = `
-      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="uploadPasswordTitle">
-        <h3 id="uploadPasswordTitle">${getText('uploadPasswordTitle')}</h3>
-        <input type="password" id="uploadPasswordInput" placeholder="${escapeAttribute(getText('uploadPasswordPlaceholder'))}" autocomplete="current-password">
-        <div class="modal-actions">
-          <button class="btn btn-ghost" id="uploadPasswordCancel">${getText('cancel')}</button>
-          <button class="btn btn-primary" id="uploadPasswordConfirm">${getText('ok')}</button>
-        </div>
-      </div>`;
-    document.body.appendChild(backdrop);
-    const input = backdrop.querySelector('#uploadPasswordInput');
-    let settled = false;
-    const finish = (value) => {
-      if (settled) return;
-      settled = true;
-      backdrop.remove();
-      resolve(value);
-    };
-    backdrop.querySelector('#uploadPasswordCancel').addEventListener('click', () => finish(''));
-    backdrop.querySelector('#uploadPasswordConfirm').addEventListener('click', () => finish(input.value));
-    backdrop.addEventListener('click', (event) => {
-      if (event.target === backdrop) finish('');
-    });
-    input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') finish(input.value);
-      if (event.key === 'Escape') finish('');
-    });
-    input.focus();
-  });
-}
-
-let uploadAuthenticationPromise = null;
-
-async function authenticateImgBBUpload() {
-  if (!uploadAuthenticationPromise) {
-    uploadAuthenticationPromise = (async () => {
-      const password = await requestUploadPassword();
-      if (!password) throw new Error(getText('uploadCancelled'));
-      const response = await fetch('/api/imgbb-upload-session', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password })
-      });
-      const result = await response.json().catch(() => null);
-      if (!response.ok) throw new Error(result?.error || 'Upload authorization failed');
-    })();
-  }
-
-  try {
-    await uploadAuthenticationPromise;
-  } finally {
-    uploadAuthenticationPromise = null;
-  }
-}
-
 async function sendImageToImgBB(dataUrl) {
   return fetch('/api/imgbb-upload', {
     method: 'POST',
@@ -1568,13 +1545,8 @@ async function sendImageToImgBB(dataUrl) {
 }
 
 async function uploadImageDataUrlToImgBB(dataUrl) {
-  let response = await sendImageToImgBB(dataUrl);
+  const response = await sendImageToImgBB(dataUrl);
   let result = await response.json().catch(() => null);
-  if (response.status === 401 && result?.code === 'UPLOAD_AUTH_REQUIRED') {
-    await authenticateImgBBUpload();
-    response = await sendImageToImgBB(dataUrl);
-    result = await response.json().catch(() => null);
-  }
   if (!response.ok || !result?.url) {
     throw new Error(result?.error || 'ImgBB upload failed');
   }
@@ -3036,20 +3008,20 @@ function openSettingsPanel() {
     <div class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settingsDialogTitle">
       <aside class="settings-sidebar">
         <div class="settings-sidebar-heading">
-          <span class="settings-sidebar-mark">⚙</span>
+          <span class="settings-sidebar-mark"><i class="fa-solid fa-gear" aria-hidden="true"></i></span>
           <span>${getText('settings')}</span>
         </div>
         <nav class="settings-nav" aria-label="${getText('settings')}">
           <button type="button" class="settings-nav-item is-active" data-settings-tab="general" aria-selected="true" aria-controls="settings-general">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A2.5 2.5 0 016.5 3h11A2.5 2.5 0 0120 5.5v13a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 18.5v-13zM7 7h10M7 11h10M7 15h6"/></svg>
+            <i class="fa-solid fa-sliders" aria-hidden="true"></i>
             <span>${getText('general')}</span>
           </button>
           <button type="button" class="settings-nav-item" data-settings-tab="appearance" aria-selected="false" aria-controls="settings-appearance">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 100 18h1.2a2.3 2.3 0 000-4.6h-.9a2.3 2.3 0 01-2.3-2.3c0-1.27 1.03-2.3 2.3-2.3H15a6 6 0 006-6A9 9 0 0012 3zM7.5 10.2a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm4.5-3a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6zm4.3 3a1.3 1.3 0 110-2.6 1.3 1.3 0 010 2.6z"/></svg>
+            <i class="fa-solid fa-palette" aria-hidden="true"></i>
             <span>${getText('appearance')}</span>
           </button>
           <button type="button" class="settings-nav-item" data-settings-tab="table" aria-selected="false" aria-controls="settings-table">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v14H4zM4 10h16M10 5v14M16 5v14"/></svg>
+            <i class="fa-solid fa-table-cells-large" aria-hidden="true"></i>
             <span>${getText('tableSettings')}</span>
           </button>
         </nav>

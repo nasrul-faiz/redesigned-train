@@ -9,6 +9,7 @@
   --text-muted: #6b7280;
   --accent: #2f6fed;
   --accent-soft: #eaf1ff;
+  --sidebar-active-bg: rgba(234, 241, 255, .62);
   --accent-hover: #2158c9;
   --danger: #e5484d;
   --shadow: 0 2px 10px rgba(0,0,0,.05);
@@ -28,6 +29,7 @@ html.dark {
   --text-muted: #8a93a3;
   --accent: #5b8def;
   --accent-soft: #1c2740;
+  --sidebar-active-bg: rgba(28, 39, 64, .72);
   --accent-hover: #7ba3f5;
   --danger: #f16a70;
   --shadow: 0 2px 14px rgba(0,0,0,.35);
@@ -392,6 +394,10 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   font-size: 14px;
 }
 
+.settings-sidebar-mark i {
+  font-size: 13px;
+}
+
 .settings-nav {
   display: grid;
   gap: 4px;
@@ -415,15 +421,26 @@ svg { width: 18px; height: 18px; fill: currentColor; }
   transition: background .15s ease, color .15s ease, border-color .15s ease;
 }
 
-.settings-nav-item svg {
+.settings-nav-item > i {
   width: 16px;
   height: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  transition: color .15s ease;
 }
 
 .settings-nav-item:hover {
   color: var(--text);
   background: var(--bg-soft);
+}
+
+.settings-nav-item:hover > i,
+.settings-nav-item.is-active > i {
+  color: var(--accent);
 }
 
 .settings-nav-item.is-active {
@@ -1038,7 +1055,7 @@ body.sidebar-collapsed .content {
   user-select: none;
 }
  .tree-row:hover { background: var(--bg-soft); }
- .tree-row.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+ .tree-row.active { background: var(--sidebar-active-bg); color: var(--accent); font-weight: 600; }
 
 .toggle-caret {
   width: 26px; height: 26px;
@@ -1328,6 +1345,16 @@ html.dark .callout-danger .callout-header { background: rgba(220, 38, 38, 0.2); 
 }
 .media-gallery.media-gallery-1 { grid-template-columns: minmax(0, 1fr); }
 .media-gallery.media-gallery-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 640px) {
+  .media-gallery:not(.media-gallery-1) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 420px) {
+  .media-gallery:not(.media-gallery-1) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
 .media-gallery .media-item {
   display: block;
   position: relative;
@@ -1342,14 +1369,17 @@ html.dark .callout-danger .callout-header { background: rgba(220, 38, 38, 0.2); 
 .media-gallery .media-item video {
   display: block;
   width: 100%;
-  height: 180px;
+  height: 240px;
   object-fit: cover;
   border-radius: 10px;
   transition: transform .2s ease;
 }
 .media-gallery.media-gallery-1 .media-item img,
 .media-gallery.media-gallery-1 .media-item video {
-  height: 230px;
+  height: auto;
+  min-height: 400px;
+  object-fit: contain;
+  background: var(--bg-soft);
 }
 .media-gallery .media-item:hover img,
 .media-gallery .media-item:hover video {
@@ -1545,7 +1575,7 @@ html.dark .editor-rich-text tr:hover td { background: rgba(91, 141, 239, .16); }
 
 .doc-map {
   position: relative;
-  width: min(100%, 720px);
+  width: 100%;
   margin: 22px auto;
   overflow: hidden;
   border: 1px solid var(--border);
@@ -1585,8 +1615,27 @@ html.dark .editor-rich-text tr:hover td { background: rgba(91, 141, 239, .16); }
   color: var(--text-muted);
   cursor: pointer;
 }
+.doc-map-copy {
+  position: absolute;
+  left: 50px;
+  bottom: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+}
 .doc-map-reset:hover,
-.doc-map-reset:focus-visible {
+.doc-map-reset:focus-visible,
+.doc-map-copy:hover,
+.doc-map-copy:focus-visible,
+.doc-map-copy.is-copied {
   border-color: var(--accent);
   color: var(--accent);
   outline: none;
@@ -2203,7 +2252,7 @@ html.dark .editor-rich-text tr:hover td { background: rgba(91, 141, 239, .16); }
 .media-upload-preview video {
   display: block;
   width: 100%;
-  max-height: 230px;
+  max-height: 320px;
   object-fit: contain;
 }
 .media-upload-file-row {
@@ -2384,7 +2433,7 @@ html.dark .editor-rich-text tr:hover td { background: rgba(91, 141, 239, .16); }
 .media-edit-preview {
   display: block;
   width: 100%;
-  height: 154px;
+  height: 220px;
   margin: 14px 0;
   border: 1px solid var(--border);
   border-radius: 9px;

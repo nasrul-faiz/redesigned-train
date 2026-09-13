@@ -2,7 +2,6 @@ import express from 'express';
 import dotenv from 'dotenv';
 import pg from 'pg';
 import path from 'node:path';
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 import { normalizeDocumentState } from './src/data-store.js';
@@ -99,40 +98,7 @@ app.post('/api/docbook', async (req, res) => {
   }
 });
 
-const UPLOAD_COOKIE = 'imgbb_upload_session';
-const UPLOAD_SESSION_MS = 8 * 60 * 60 * 1000;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-
-function parseCookies(header = '') {
-  return Object.fromEntries(header.split(';').flatMap((part) => {
-    const separator = part.indexOf('=');
-    if (separator < 0) return [];
-    return [[part.slice(0, separator).trim(), decodeURIComponent(part.slice(separator + 1).trim())]];
-  }));
-}
-
-function safeEqual(left, right) {
-  const leftBuffer = Buffer.from(String(left));
-  const rightBuffer = Buffer.from(String(right));
-  return leftBuffer.length === rightBuffer.length && timingSafeEqual(leftBuffer, rightBuffer);
-}
-
-function createUploadSession(secret) {
-  const expiresAt = Date.now() + UPLOAD_SESSION_MS;
-  const id = randomBytes(16).toString('hex');
-  const payload = `${expiresAt}.${id}`;
-  const signature = createHmac('sha256', secret).update(payload).digest('base64url');
-  return `${payload}.${signature}`;
-}
-
-function verifyUploadSession(token, secret) {
-  if (!token || !secret) return null;
-  const [expiresAt, id, signature, ...extra] = token.split('.');
-  if (extra.length || !expiresAt || !id || !signature || Number(expiresAt) <= Date.now()) return null;
-  const payload = `${expiresAt}.${id}`;
-  const expected = createHmac('sha256', secret).update(payload).digest('base64url');
-  return safeEqual(signature, expected) ? { id, expiresAt: Number(expiresAt) } : null;
-}
 
 function hasTrustedOrigin(req) {
   const origin = req.get('origin');
@@ -163,59 +129,23 @@ function consumeRateLimit(store, key, limit, windowMs) {
 export function createImgBBUploadRouter({
   env = process.env,
   providerFetch = globalThis.fetch,
-  loginLimit = 5,
   uploadLimit = 30
 } = {}) {
   const router = express.Router();
-  const loginAttempts = new Map();
   const uploadAttempts = new Map();
   const activeUploads = new Set();
-
-  router.post('/imgbb-upload-session', (req, res) => {
-    if (!hasTrustedOrigin(req)) {
-      return res.status(403).json({ error: 'Permintaan tidak dibenarkan.' });
-    }
-    if (!env.IMG_UPLOAD_PASSWORD || !env.SESSION_SECRET) {
-      return res.status(503).json({ error: 'Sesi upload belum dikonfigurasi.' });
-    }
-    if (!consumeRateLimit(loginAttempts, req.ip, loginLimit, 15 * 60 * 1000)) {
-      res.set('Retry-After', '900');
-      return res.status(429).json({ error: 'Terlalu banyak percubaan. Cuba lagi kemudian.' });
-    }
-    if (!safeEqual(req.body?.password || '', env.IMG_UPLOAD_PASSWORD)) {
-      return res.status(401).json({ error: 'Password upload tidak betul.' });
-    }
-
-    const token = createUploadSession(env.SESSION_SECRET);
-    res.cookie(UPLOAD_COOKIE, token, {
-      httpOnly: true,
-      sameSite: 'strict',
-      secure: req.secure,
-      maxAge: UPLOAD_SESSION_MS,
-      path: '/api'
-    });
-    return res.json({ ok: true });
-  });
 
   router.post('/imgbb-upload', async (req, res) => {
     if (!hasTrustedOrigin(req)) {
       return res.status(403).json({ error: 'Permintaan tidak dibenarkan.' });
     }
 
-    const token = parseCookies(req.get('cookie'))[UPLOAD_COOKIE];
-    const session = verifyUploadSession(token, env.SESSION_SECRET);
-    if (!session) {
-      return res.status(401).json({
-        code: 'UPLOAD_AUTH_REQUIRED',
-        error: 'Masukkan password upload untuk meneruskan.'
-      });
-    }
-    if (!consumeRateLimit(uploadAttempts, `${session.id}:${req.ip}`, uploadLimit, 60 * 60 * 1000)) {
+    if (!consumeRateLimit(uploadAttempts, req.ip, uploadLimit, 60 * 60 * 1000)) {
       res.set('Retry-After', '3600');
       return res.status(429).json({ error: 'Had upload dicapai. Cuba lagi kemudian.' });
     }
 
-    const uploadKey = `${session.id}:${req.ip}`;
+    const uploadKey = req.ip;
     if (activeUploads.has(uploadKey)) {
       return res.status(429).json({ error: 'Satu upload masih berjalan. Tunggu sebentar.' });
     }

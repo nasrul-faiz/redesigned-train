@@ -122,8 +122,11 @@ export function markdownImagesToGalleryMarkup(source = '') {
     const href = escapeHtml(image.src);
     const alt = escapeHtml(caption);
     const isOverflow = index >= visibleCount;
-    return `<a href="${href}" class="media-item${isOverflow ? ' media-item-overflow' : ''}" data-media-type="image" data-sub-html="${escapeHtml(caption)}" aria-label="${alt}"><img src="${href}" alt="${alt}" /></a>`;
+    const moreOverlay = index === visibleCount - 1 && overflowCount
+      ? `<span class="media-more-overlay">+${overflowCount} more image${overflowCount === 1 ? '' : 's'}</span>`
+      : '';
+    return `<a href="${href}" class="media-item${isOverflow ? ' media-item-overflow' : ''}" data-media-type="image" data-sub-html="${escapeHtml(caption)}" aria-label="${alt}"><img src="${href}" alt="${alt}" />${moreOverlay}</a>`;
   }).join('');
 
-  return `<div class="${galleryClass}" data-overflow-count="${overflowCount}">${markup}${overflowCount ? `<span class="media-more-overlay">+${overflowCount} more</span>` : ''}</div>`;
+  return `<div class="${galleryClass}" data-overflow-count="${overflowCount}">${markup}</div>`;
 }
